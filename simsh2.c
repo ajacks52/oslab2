@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <sys/fcntl.h>
 
 //*************************************************************************************
 typedef struct {
@@ -20,7 +21,10 @@ void free_chopped_line( chopped_line_t * icl );
 
 typedef struct {
     char ** args;           //pointer to "args" null-terminated strings
-    int num_args;  //size of "args" string pointer array
+    int num_args;           //size of "args" string pointer array
+    char *infile;           //name of infile
+    char *outfile;          //name of outfile
+    int appended;
 } program_with_args_t ;
 
 int MAX_ARGS = 32;
@@ -91,10 +95,31 @@ int main (int argc, char **argv)
         }
         else
         {// child process
+            int infile, outfile;
+
             printf ( "Child process\n" );
 
             programs = construct_programs(parsed_command);
             free_chopped_line(parsed_command);
+
+
+            if (programs[0]->infile != NULL) // if <
+            {
+                if (access( programs[0]->infile, F_OK ) != -1)
+                { // file exists
+                    infile = open(programs[0]->infile, O_RDONLY);
+                    dup2(infile, 0);
+                    close(infile);
+                }
+                else
+                { // file doesn't exist
+                    printf("%s: No such file or directory", "");
+                }
+            }
+
+            // out = open("out", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+            // dup2(out, 1);
+            // close(out);
 
             printf ( "command: %s\n", programs[0]->args[0]);
             execvp(programs[0]->args[0], programs[0]->args);
@@ -107,6 +132,7 @@ int main (int argc, char **argv)
 program_with_args_t** construct_programs(chopped_line_t *parsed_line)
 {
     int i, num_processes_needed = 1;
+    char* last_token_was = NULL;
     program_with_args_t ** programs;
 
     for(i = 0; i < parsed_line->num_tokens; i++)
@@ -125,6 +151,9 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
         programs[i] = (program_with_args_t *) calloc( 1, sizeof(chopped_line_t));
         programs[i]->args = ( char ** ) malloc(MAX_ARGS * MAX_ARGS * sizeof( char * ) );
         programs[i]->num_args = 0;
+        programs[i]->infile = NULL;
+        programs[i]->outfile = NULL;
+        programs[i]->appended = -1;
     }
 
     int process_index = 0;
@@ -133,13 +162,45 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
     for (i = 0; i < parsed_line->num_tokens; i++)
     {
         char *current_token = parsed_line->tokens[i];
-        if(!strcmp(current_token,"|"))
+
+        if (!strcmp(last_token_was,"<"))
+        {
+            programs[process_index]->infile = malloc(strlen(current_token));
+            programs[process_index]->infile = strdup (current_token);
+        }
+        else if (!strcmp(last_token_was,">"))
+        {
+            programs[process_index]->outfile = malloc(strlen(current_token));
+            programs[process_index]->outfile = strdup (current_token);
+            programs[process_index]->appended = 0;
+        }
+        else if (!strcmp(last_token_was,">>"))
+        {
+            programs[process_index]->outfile = malloc(strlen(current_token));
+            programs[process_index]->outfile = strdup (current_token);
+            programs[process_index]->appended = 1;
+        }
+        else if(!strcmp(current_token,"|"))
         {
             process_index++;
             have_name = false;
             continue;
         }
-        else if(!strcmp(current_token,">") || !strcmp(current_token,"<") || !strcmp(current_token,"<<") || !strcmp(current_token,"&"))
+        else if(!strcmp(current_token,"<")) {
+            last_token_was = strdup(current_token);
+            continue;
+        }
+        else if(!strcmp(current_token,">"))
+        {
+            last_token_was = strdup(current_token);
+            continue;
+        }
+        else if(!strcmp(current_token,">>"))
+        {
+            last_token_was = strdup(current_token);
+            continue;
+        }
+        else if(!strcmp(current_token,"&"))
         {
             continue;
         }
