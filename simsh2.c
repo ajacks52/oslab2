@@ -37,7 +37,6 @@ int valid(chopped_line_t *args);
 program_with_args_t** construct_programs(chopped_line_t *parsed_line);
 bool check_exit( char * line );
 void handle_sigchld(int sig);
-int file_exist (char *filename);
 
 
 int main (int argc, char **argv)
@@ -45,7 +44,7 @@ int main (int argc, char **argv)
     size_t buffer_size = 4096;
     char *input_buffer = malloc(buffer_size);
     chopped_line_t *parsed_command;
-    program_with_args_t ** programs;
+    program_with_args_t ** programs = NULL;
 
     // Register signal handlers
     struct sigaction action;
@@ -61,6 +60,9 @@ int main (int argc, char **argv)
     ssize_t bytes_read = 0;
     while (true)
     {
+//        parsed_command = NULL;
+//        programs = NULL;
+
         printf("simsh: ");
 
         bytes_read = getline(&input_buffer, &buffer_size, stdin);
@@ -93,63 +95,89 @@ int main (int argc, char **argv)
 
         // input is valid now create child process to run program
         // fork to create child process
-//        pid = fork ();
-//        if (pid == -1)
-//        {
-//            printf( "\"fork\" failed\n" );
-//            continue;
-//        }
+        pid = fork ();
+        if (pid == -1)
+        {
+            printf( "\"fork\" failed\n" );
+            continue;
+        }
 
-//        if (pid != 0)
-//        { // parent process
-////            printf ( "Parent process\n" );
-//            int status;
-//            if (valid_input != 2)
-//            { // user didn't type & must wait on child process
-//                waitpid(pid, &status, 0);
-//            }
-//        }
-//        else
+        if (pid != 0)
+        { // parent process
+//            printf ( "Parent process\n" );
+            int status;
+            if (valid_input != 2)
+            { // user didn't type & must wait on child process
+                waitpid(pid, &status, 0);
+            }
+            continue;
+        }
+        else
         {// child process
-            int infile, outfile;
+            int infile_descr, outfile_descr, err_descr;
 
-            printf ( "Child process\n" );
+//            printf ( "Child process\n" );
 
             programs = construct_programs(parsed_command);
-            free_chopped_line(parsed_command);
-
 
             if (programs[0]->infile != NULL) // if <
             {
 
-                if (access( "blah.txt", F_OK ) != -1)
+                if (access( programs[0]->infile, F_OK ) != -1)
                 { // file exists
-                    infile = open(programs[0]->infile, O_RDONLY);
-                    dup2(infile, 0);
-                    close(infile);
+                    infile_descr = open(programs[0]->infile, O_RDONLY);
+                    dup2(infile_descr, STDIN_FILENO);
+                    close(infile_descr);
                 }
-//                if (file_exist (programs[0]->infile))
-//                {
-//                    infile = open(programs[0]->infile, O_RDONLY);
-//                    dup2(infile, 0);
-//                    close(infile);
-//                }
                 else
                 { // file doesn't exist
-                    printf("%s: No such file or directory", "");
+                    printf("%s: No such file or directory\n", programs[0]->infile);
                     continue;
                 }
             }
 
-            // out = open("out", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
-            // dup2(out, 1);
-            // close(out);
-
-            printf ( "command: %s\n", programs[0]->args[0]);
+            if (programs[0]->outfile != NULL) // if >> or >
+            {
+                if (programs[0]->append == 0)
+                { // don't append to file i.e >
+                    if (access( programs[0]->outfile, F_OK ) != -1) { // file exists
+                        printf("%s: File exists\n", programs[0]->outfile);
+                        continue;
+                    }
+                    else
+                    {
+                        outfile_descr = open(programs[0]->outfile, O_WRONLY | O_TRUNC | O_EXCL, S_IRUSR | S_IWUSR);
+                        if(outfile_descr == -1) {
+                            perror(programs[0]->outfile);
+                            exit(1);
+                        }
+                        err_descr = dup2(outfile_descr, STDOUT_FILENO);
+                        if (err_descr == -1) {
+                            perror(programs[0]->outfile);
+                            exit(1);
+                        }
+                        close(outfile_descr);
+                    }
+                }
+                else if (programs[0]->append == 1)
+                { // append to file i.e >>
+                    outfile_descr = open(programs[0]->outfile, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+                    if(outfile_descr == -1) {
+                        perror(programs[0]->outfile);
+                        exit(1);
+                    }
+                    err_descr = dup2(outfile_descr, STDOUT_FILENO);
+                    if (err_descr == -1) {
+                        perror(programs[0]->outfile);
+                        exit(1);
+                    }
+                    close(outfile_descr);
+                }
+            }
+//            printf ( "command: %s\n", programs[0]->args[0]);
             execvp(programs[0]->args[0], programs[0]->args);
             _exit(1);
         }
-
     }
 }
 
@@ -294,12 +322,6 @@ bool check_exit( char * line )
         return true;
     }
     return false;
-}
-
-int file_exist (char *filename)
-{
-    struct stat   buffer;
-    return (stat (filename, &buffer) == 0);
 }
 
 void handle_sigchld(int sig) {
