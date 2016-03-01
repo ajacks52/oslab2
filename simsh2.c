@@ -122,15 +122,18 @@ int main (int argc, char **argv)
             if (programs[0]->infile != NULL) // if <
             {
 
-//                if( access( fname, F_OK ) != -1 ) {
-//                    // file exists
-//                }
-                if (file_exist (programs[0]->infile))
-                {
+                if (access( "blah.txt", F_OK ) != -1)
+                { // file exists
                     infile = open(programs[0]->infile, O_RDONLY);
                     dup2(infile, 0);
                     close(infile);
                 }
+//                if (file_exist (programs[0]->infile))
+//                {
+//                    infile = open(programs[0]->infile, O_RDONLY);
+//                    dup2(infile, 0);
+//                    close(infile);
+//                }
                 else
                 { // file doesn't exist
                     printf("%s: No such file or directory", "");
