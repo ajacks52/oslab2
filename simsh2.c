@@ -1,7 +1,6 @@
 //
 // Created by Adam Mitchell on 2/19/16.
 //
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,16 +11,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <sys/stat.h>
-
-//*************************************************************************************
-typedef struct {
-    char ** tokens;           //pointer to "num_tokens" null-terminated strings
-    unsigned int num_tokens;  //size of "tokens" string pointer array
-} chopped_line_t ;
-
-chopped_line_t * get_chopped_line( const char * iline );
-void free_chopped_line( chopped_line_t * icl );
-//**************************************************************************************
+#include "chop_line.h"
 
 typedef struct {
     char ** args;           //pointer to "args" null-terminated strings
@@ -202,18 +192,15 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
 
         if (!strcmp(last_token_was,"<"))
         {
-            programs[process_index]->infile = malloc((strlen(current_token)+1) * 2);
             programs[process_index]->infile = strdup (current_token);
         }
         else if (!strcmp(last_token_was,">"))
         {
-            programs[process_index]->outfile = malloc((strlen(current_token)+1) * 2);
             programs[process_index]->outfile = strdup (current_token);
             programs[process_index]->append = 0;
         }
         else if (!strcmp(last_token_was,">>"))
         {
-            programs[process_index]->outfile = malloc((strlen(current_token)+1) * 2);
             programs[process_index]->outfile = strdup (current_token);
             programs[process_index]->append = 1;
         }
@@ -243,7 +230,6 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
         }
         else if (!have_name)
         { // haven't found index's name
-            programs[process_index]->args[0] = malloc(strlen(current_token) + 1);
             programs[process_index]->args[0] = strdup (current_token);
             programs[process_index]->num_args = 1;
 
@@ -253,7 +239,6 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
         else
         { // have found index's name
             int args_array_index = programs[process_index]->num_args;
-            programs[process_index]->args[args_array_index] = ( char * ) malloc(strlen(current_token)+1 );
             programs[process_index]->args[args_array_index] = strdup (current_token);
             programs[process_index]->num_args = args_array_index+1;
         }
@@ -355,43 +340,3 @@ void handle_sigchld(int sig) {
     while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
     errno = saved_errno;
 }
-
-//******************************************************************************
-chopped_line_t * get_chopped_line( const char * iline )
-{
-    chopped_line_t * cl;
-    char * line_copy;
-    const char * delim = " \t\n";
-    char * cur_token;
-
-    cl = (chopped_line_t *) malloc ( sizeof(chopped_line_t) );
-    cl->tokens = NULL;
-    cl->num_tokens = 0;
-
-    if( iline == NULL )
-        return cl;
-
-    line_copy = strdup( iline );
-    cur_token = strtok( line_copy, delim );
-    if( cur_token == NULL )
-        return cl;
-
-    do {
-        cl->num_tokens++;
-        cl->tokens = ( char ** ) realloc( cl->tokens,
-                                          cl->num_tokens * sizeof( char * ) );
-        cl->tokens[ cl->num_tokens - 1 ] = cur_token;
-    } while((cur_token = strtok(NULL, delim)));
-
-    return cl;
-}
-
-void free_chopped_line( chopped_line_t * icl )
-{
-    if( icl == NULL )
-        return;
-
-    free(icl->tokens);
-    free(icl);
-}
-//*********************************************************************************
