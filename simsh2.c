@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <sys/fcntl.h>
+#include <signal.h>
+#include <sys/errno.h>
 
 //*************************************************************************************
 typedef struct {
@@ -40,6 +42,16 @@ int main (int argc, char **argv)
     char *input_buffer = malloc(buffer_size);
     chopped_line_t *parsed_command;
     program_with_args_t ** programs;
+
+    // Register signal handlers
+    struct sigaction action;
+    action.sa_handler = &handle_sigchld;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    if (sigaction(SIGCHLD, &action, 0) == -1) {
+        perror(0);
+        exit(1);
+    }
 
     int pid;
     ssize_t bytes_read = 0;
@@ -272,7 +284,11 @@ bool check_exit( char * line )
     return false;
 }
 
-
+void handle_sigchld(int sig) {
+    int saved_errno = errno;
+    while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
+    errno = saved_errno;
+}
 
 //******************************************************************************
 chopped_line_t * get_chopped_line( const char * iline )

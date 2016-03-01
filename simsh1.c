@@ -7,6 +7,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <sys/errno.h>
+#include <signal.h>
 
 //*************************************************************************************
 typedef struct {
@@ -16,11 +18,27 @@ typedef struct {
 
 chopped_line_t * get_chopped_line( const char * iline );
 void free_chopped_line( chopped_line_t * icl );
+
+//******************* List Stuff ********************
+//struct list_node_t{
+//    int val;
+//    struct list_node_t * next;
+//};
+//
+//typedef struct {
+//    struct list_node_t * head;
+//} list_t;
+//
+//list_t * list_create( void );
+//void list_clear( list_t * ilist );
+//void list_delete( list_t * ilist );
+//void list_insert_val( list_t * ilist, int i );
+//void list_remove_val( list_t * ilist, int i );
 //**************************************************************************************
 
 typedef struct {
     char ** args;           //pointer to "args" null-terminated strings
-    int num_args;  //size of "args" string pointer array
+    int num_args;           //size of "args" string pointer array
 } program_with_args_t ;
 
 int MAX_ARGS = 32;
@@ -36,6 +54,16 @@ int main (int argc, char **argv)
     char *input_buffer = malloc(buffer_size);
     chopped_line_t *parsed_command;
     program_with_args_t ** programs;
+
+    // Register signal handlers
+    struct sigaction action;
+    action.sa_handler = &handle_sigchld;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    if (sigaction(SIGCHLD, &action, 0) == -1) {
+        perror(0);
+        exit(1);
+    }
 
     int pid;
     ssize_t bytes_read = 0;
@@ -212,6 +240,11 @@ bool check_exit( char * line )
 }
 
 
+void handle_sigchld(int sig) {
+    int saved_errno = errno;
+    while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
+    errno = saved_errno;
+}
 
 //******************************************************************************
 chopped_line_t * get_chopped_line( const char * iline )
@@ -251,4 +284,69 @@ void free_chopped_line( chopped_line_t * icl )
     free(icl->tokens);
     free(icl);
 }
+
+//******************* List Stuff ********************
+//list_t * list_create( void )
+//{
+//    list_t * new_list = ( list_t * )malloc(sizeof(list_t));
+//    new_list->head = NULL;
+//    return new_list;
+//}
+//
+//void list_clear( list_t * ilist )
+//{
+//    struct list_node_t * cur_node, * tmp_node;
+//
+//    cur_node = ilist->head;
+//    while( cur_node != NULL ) {
+//        tmp_node = cur_node;
+//        cur_node = cur_node->next;
+//        free( tmp_node );
+//    }
+//    ilist->head = NULL;
+//}
+//
+//void list_delete( list_t * ilist )
+//{
+//    struct list_node_t * cur_node, * tmp_node;
+//
+//    cur_node = ilist->head;
+//    while( cur_node != NULL ) {
+//        tmp_node = cur_node;
+//        cur_node = cur_node->next;
+//        free( tmp_node );
+//    }
+//    free( ilist );
+//}
+//
+//void list_insert_val( list_t * ilist, int i )
+//{
+//    struct list_node_t * new_node = (struct list_node_t *)
+//            malloc(sizeof(struct list_node_t));
+//    new_node->val = i;
+//    new_node->next = ilist->head;
+//    ilist->head = new_node;
+//}
+//
+//void list_remove_val( list_t * ilist, int i )
+//{
+//    struct list_node_t * prev_node, *cur_node;
+//
+//    prev_node = NULL;
+//    cur_node = ilist->head;
+//    while( cur_node != NULL ) {
+//        if( cur_node->val == i ) {
+//            if( prev_node == NULL ) {
+//                ilist->head = cur_node->next;
+//            }
+//            else{
+//                prev_node->next = cur_node->next;
+//            }
+//            free( cur_node );
+//            return;
+//        }
+//        prev_node = cur_node;
+//        cur_node = cur_node->next;
+//    }
+//}
 //*********************************************************************************
