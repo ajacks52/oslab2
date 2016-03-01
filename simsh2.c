@@ -10,6 +10,7 @@
 #include <sys/fcntl.h>
 #include <signal.h>
 #include <sys/errno.h>
+#include <sys/stat.h>
 
 //*************************************************************************************
 typedef struct {
@@ -26,7 +27,7 @@ typedef struct {
     int num_args;           //size of "args" string pointer array
     char *infile;           //name of infile
     char *outfile;          //name of outfile
-    int appended;
+    int append;
 } program_with_args_t ;
 
 int MAX_ARGS = 32;
@@ -35,6 +36,7 @@ int valid(chopped_line_t *args);
 program_with_args_t** construct_programs(chopped_line_t *parsed_line);
 bool check_exit( char * line );
 void handle_sigchld(int sig);
+int file_exist (char *filename);
 
 
 int main (int argc, char **argv)
@@ -90,12 +92,12 @@ int main (int argc, char **argv)
 
         // input is valid now create child process to run program
         // fork to create child process
-        pid = fork ();
-        if (pid == -1)
-        {
-            printf( "\"fork\" failed\n" );
-            continue;
-        }
+//        pid = fork ();
+//        if (pid == -1)
+//        {
+//            printf( "\"fork\" failed\n" );
+//            continue;
+//        }
 
 //        if (pid != 0)
 //        { // parent process
@@ -118,8 +120,12 @@ int main (int argc, char **argv)
 
             if (programs[0]->infile != NULL) // if <
             {
-                if (access( programs[0]->infile, F_OK ) != -1)
-                { // file exists
+
+//                if( access( fname, F_OK ) != -1 ) {
+//                    // file exists
+//                }
+                if (file_exist (programs[0]->infile))
+                {
                     infile = open(programs[0]->infile, O_RDONLY);
                     dup2(infile, 0);
                     close(infile);
@@ -127,6 +133,7 @@ int main (int argc, char **argv)
                 else
                 { // file doesn't exist
                     printf("%s: No such file or directory", "");
+                    continue;
                 }
             }
 
@@ -145,7 +152,7 @@ int main (int argc, char **argv)
 program_with_args_t** construct_programs(chopped_line_t *parsed_line)
 {
     int i, num_processes_needed = 1;
-    char* last_token_was = NULL;
+    char* last_token_was = "";
     program_with_args_t ** programs;
 
     for(i = 0; i < parsed_line->num_tokens; i++)
@@ -166,7 +173,7 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
         programs[i]->num_args = 0;
         programs[i]->infile = NULL;
         programs[i]->outfile = NULL;
-        programs[i]->appended = -1;
+        programs[i]->append = -1;
     }
 
     int process_index = 0;
@@ -185,13 +192,13 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
         {
             programs[process_index]->outfile = malloc(strlen(current_token));
             programs[process_index]->outfile = strdup (current_token);
-            programs[process_index]->appended = 0;
+            programs[process_index]->append = 0;
         }
         else if (!strcmp(last_token_was,">>"))
         {
             programs[process_index]->outfile = malloc(strlen(current_token));
             programs[process_index]->outfile = strdup (current_token);
-            programs[process_index]->appended = 1;
+            programs[process_index]->append = 1;
         }
         else if(!strcmp(current_token,"|"))
         {
@@ -283,6 +290,12 @@ bool check_exit( char * line )
         return true;
     }
     return false;
+}
+
+int file_exist (char *filename)
+{
+    struct stat   buffer;
+    return (stat (filename, &buffer) == 0);
 }
 
 void handle_sigchld(int sig) {
