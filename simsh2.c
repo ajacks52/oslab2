@@ -25,9 +25,9 @@ void free_chopped_line( chopped_line_t * icl );
 
 typedef struct {
     char ** args;           //pointer to "args" null-terminated strings
-    int num_args;           //size of "args" string pointer array
     char *infile;           //name of infile
     char *outfile;          //name of outfile
+    int num_args;           //size of "args" string pointer array
     int append;
 } program_with_args_t ;
 
@@ -60,9 +60,6 @@ int main (int argc, char **argv)
     ssize_t bytes_read = 0;
     while (true)
     {
-//        parsed_command = NULL;
-//        programs = NULL;
-
         printf("simsh: ");
 
         bytes_read = getline(&input_buffer, &buffer_size, stdin);
@@ -82,14 +79,9 @@ int main (int argc, char **argv)
         parsed_command = get_chopped_line(input_buffer);
 
         int valid_input = valid(parsed_command);
-        if (valid_input == -2)
-        {
-            printf("operator & must appear at end of command line\n");
-            continue;
-        }
+
         if (valid_input == -1)
         {
-            printf("invalid input\n");
             continue;
         }
 
@@ -104,7 +96,6 @@ int main (int argc, char **argv)
 
         if (pid != 0)
         { // parent process
-//            printf ( "Parent process\n" );
             int status;
             if (valid_input != 2)
             { // user didn't type & must wait on child process
@@ -114,24 +105,21 @@ int main (int argc, char **argv)
         }
         else
         {// child process
-            int infile_descr, outfile_descr, err_descr;
-
-//            printf ( "Child process\n" );
-
+            int infile_descr, outfile_descr = 0, err;
             programs = construct_programs(parsed_command);
+
 
             if (programs[0]->infile != NULL) // if <
             {
-
                 if (access( programs[0]->infile, F_OK ) != -1)
                 { // file exists
                     infile_descr = open(programs[0]->infile, O_RDONLY);
-                    dup2(infile_descr, STDIN_FILENO);
+                    dup2(infile_descr, STDIN_FILENO); // redirect std in to new file
                     close(infile_descr);
                 }
                 else
                 { // file doesn't exist
-                    printf("%s: No such file or directory\n", programs[0]->infile);
+                    printf("%s: No such file or directory.\n", programs[0]->infile);
                     continue;
                 }
             }
@@ -141,42 +129,39 @@ int main (int argc, char **argv)
                 if (programs[0]->append == 0)
                 { // don't append to file i.e >
                     if (access( programs[0]->outfile, F_OK ) != -1) { // file exists
-                        printf("%s: File exists\n", programs[0]->outfile);
+                        printf("%s: File exists.\n", programs[0]->outfile);
                         continue;
                     }
                     else
                     {
-                        outfile_descr = open(programs[0]->outfile, O_WRONLY | O_TRUNC | O_EXCL, S_IRUSR | S_IWUSR);
+                        outfile_descr = open(programs[0]->outfile, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
                         if(outfile_descr == -1) {
                             perror(programs[0]->outfile);
                             exit(1);
                         }
-                        err_descr = dup2(outfile_descr, STDOUT_FILENO);
-                        if (err_descr == -1) {
-                            perror(programs[0]->outfile);
-                            exit(1);
-                        }
-                        close(outfile_descr);
                     }
                 }
                 else if (programs[0]->append == 1)
                 { // append to file i.e >>
+
                     outfile_descr = open(programs[0]->outfile, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
                     if(outfile_descr == -1) {
                         perror(programs[0]->outfile);
                         exit(1);
                     }
-                    err_descr = dup2(outfile_descr, STDOUT_FILENO);
-                    if (err_descr == -1) {
-                        perror(programs[0]->outfile);
-                        exit(1);
-                    }
-                    close(outfile_descr);
                 }
+                err = dup2(outfile_descr, STDOUT_FILENO); // redirect std out to new file
+                if (err == -1) {
+                    perror(programs[0]->outfile);
+                    exit(1);
+                }
+                close(outfile_descr);
             }
-//            printf ( "command: %s\n", programs[0]->args[0]);
             execvp(programs[0]->args[0], programs[0]->args);
-            _exit(1);
+            printf("using outfile %s: .\n", programs[0]->outfile);
+
+            perror(programs[0]->args[0]);
+            exit(1);
         }
     }
 }
@@ -217,18 +202,18 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
 
         if (!strcmp(last_token_was,"<"))
         {
-            programs[process_index]->infile = malloc(strlen(current_token));
+            programs[process_index]->infile = malloc((strlen(current_token)+1) * 2);
             programs[process_index]->infile = strdup (current_token);
         }
         else if (!strcmp(last_token_was,">"))
         {
-            programs[process_index]->outfile = malloc(strlen(current_token));
+            programs[process_index]->outfile = malloc((strlen(current_token)+1) * 2);
             programs[process_index]->outfile = strdup (current_token);
             programs[process_index]->append = 0;
         }
         else if (!strcmp(last_token_was,">>"))
         {
-            programs[process_index]->outfile = malloc(strlen(current_token));
+            programs[process_index]->outfile = malloc((strlen(current_token)+1) * 2);
             programs[process_index]->outfile = strdup (current_token);
             programs[process_index]->append = 1;
         }
@@ -258,7 +243,7 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
         }
         else if (!have_name)
         { // haven't found index's name
-            programs[process_index]->args[0] = malloc(strlen(current_token));
+            programs[process_index]->args[0] = malloc(strlen(current_token) + 1);
             programs[process_index]->args[0] = strdup (current_token);
             programs[process_index]->num_args = 1;
 
@@ -279,31 +264,72 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
 
 int valid(chopped_line_t *args)
 {
-    int i, num_args = args->num_tokens, num_inputs = 0, num_outputs = 0, num_ands = 0;
+    int i, num_args = args->num_tokens, num_inputs = 0, num_outputs = 0, num_ands = 0, last_arg = 1;
+
+    if (!strcmp(args->tokens[0],">") || !strcmp(args->tokens[0],">>") || !strcmp(args->tokens[0],"<") || !strcmp(args->tokens[0],"|"))
+    {
+        printf("Invalid null command.\n");
+        return -1;
+    }
 
     for(i = 0; i < num_args; i++)
     {
         char *current_token = args->tokens[i];
-        if (num_ands > 0)
+
+        if (i == 0 && (!strcmp(current_token,">") || !strcmp(current_token,">>")))
         {
-            return -2;
+            printf("Invalid null command.\n");
+            return -1;
         }
-        if(!strcmp(current_token,"&"))
+        else if (num_ands > 0)
         {
+            printf("operator & must appear at end of command line\n");
+            return -1;
+        }
+        else if ( last_arg < -1 )
+        {
+            printf("Missing name for redirect.\n");
+            return -1;
+        }
+        else if ( last_arg < -2 )
+        {
+            printf("Invalid null command.\n");
+            return -1;
+        }
+        else if(!strcmp(current_token,"&"))
+        {
+            last_arg = 1;
             num_ands++;
         }
-        if(!strcmp(current_token,"<"))
+        else if(!strcmp(current_token,"|"))
         {
+            last_arg = -2;
             num_inputs++;
         }
-        if(!strcmp(current_token,">>") || !strcmp(current_token,">"))
+        else if(!strcmp(current_token,"<"))
         {
+            last_arg = -1;
+            num_inputs++;
+        }
+        else if(!strcmp(current_token,">>") || !strcmp(current_token,">"))
+        {
+            last_arg = -1;
             num_outputs++;
+        }
+        else
+        {
+            last_arg = 1;
         }
     }
 
-    if (num_inputs > 1 || num_outputs > 1)
+    if (num_inputs > 1)
     {
+        printf("Ambiguous input redirect.\n");
+        return -1;
+    }
+    if (num_outputs > 1)
+    {
+        printf("Ambiguous output redirect.\n");
         return -1;
     }
     if (num_ands == 1)

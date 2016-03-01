@@ -18,22 +18,6 @@ typedef struct {
 
 chopped_line_t * get_chopped_line( const char * iline );
 void free_chopped_line( chopped_line_t * icl );
-
-//******************* List Stuff ********************
-//struct list_node_t{
-//    int val;
-//    struct list_node_t * next;
-//};
-//
-//typedef struct {
-//    struct list_node_t * head;
-//} list_t;
-//
-//list_t * list_create( void );
-//void list_clear( list_t * ilist );
-//void list_delete( list_t * ilist );
-//void list_insert_val( list_t * ilist, int i );
-//void list_remove_val( list_t * ilist, int i );
 //**************************************************************************************
 
 typedef struct {
@@ -111,7 +95,6 @@ int main (int argc, char **argv)
 
         if (pid != 0)
         { // parent process
-            printf ( "Parent process\n" );
             int status;
             if (valid_input != 2)
             { // user didn't type & must wait on child process
@@ -120,8 +103,6 @@ int main (int argc, char **argv)
         }
         else
         {// child process
-            printf ( "Child process\n" );
-
             programs = construct_programs(parsed_command);
             free_chopped_line(parsed_command);
 
@@ -136,6 +117,7 @@ int main (int argc, char **argv)
 program_with_args_t** construct_programs(chopped_line_t *parsed_line)
 {
     int i, num_processes_needed = 1;
+    char* last_token_was = "";
     program_with_args_t ** programs;
 
     for(i = 0; i < parsed_line->num_tokens; i++)
@@ -162,19 +144,44 @@ program_with_args_t** construct_programs(chopped_line_t *parsed_line)
     for (i = 0; i < parsed_line->num_tokens; i++)
     {
         char *current_token = parsed_line->tokens[i];
-        if(!strcmp(current_token,"|"))
+
+        if (!strcmp(last_token_was,"<"))
         {
-            process_index++;
-            have_name = false;
             continue;
         }
-        else if(!strcmp(current_token,">") || !strcmp(current_token,"<") || !strcmp(current_token,"<<") || !strcmp(current_token,"&"))
+        else if (!strcmp(last_token_was,">"))
+        {
+            continue;
+        }
+        else if (!strcmp(last_token_was,">>"))
+        {
+            continue;
+        }
+        else if(!strcmp(current_token,"|"))
+        {
+            continue;
+        }
+        else if(!strcmp(current_token,"<")) {
+            last_token_was = strdup(current_token);
+            continue;
+        }
+        else if(!strcmp(current_token,">"))
+        {
+            last_token_was = strdup(current_token);
+            continue;
+        }
+        else if(!strcmp(current_token,">>"))
+        {
+            last_token_was = strdup(current_token);
+            continue;
+        }
+        else if(!strcmp(current_token,"&"))
         {
             continue;
         }
         else if (!have_name)
         { // haven't found index's name
-            programs[process_index]->args[0] = malloc(strlen(current_token));
+            programs[process_index]->args[0] = malloc(strlen(current_token) + 1);
             programs[process_index]->args[0] = strdup (current_token);
             programs[process_index]->num_args = 1;
 
@@ -285,69 +292,4 @@ void free_chopped_line( chopped_line_t * icl )
     free(icl->tokens);
     free(icl);
 }
-
-//******************* List Stuff ********************
-//list_t * list_create( void )
-//{
-//    list_t * new_list = ( list_t * )malloc(sizeof(list_t));
-//    new_list->head = NULL;
-//    return new_list;
-//}
-//
-//void list_clear( list_t * ilist )
-//{
-//    struct list_node_t * cur_node, * tmp_node;
-//
-//    cur_node = ilist->head;
-//    while( cur_node != NULL ) {
-//        tmp_node = cur_node;
-//        cur_node = cur_node->next;
-//        free( tmp_node );
-//    }
-//    ilist->head = NULL;
-//}
-//
-//void list_delete( list_t * ilist )
-//{
-//    struct list_node_t * cur_node, * tmp_node;
-//
-//    cur_node = ilist->head;
-//    while( cur_node != NULL ) {
-//        tmp_node = cur_node;
-//        cur_node = cur_node->next;
-//        free( tmp_node );
-//    }
-//    free( ilist );
-//}
-//
-//void list_insert_val( list_t * ilist, int i )
-//{
-//    struct list_node_t * new_node = (struct list_node_t *)
-//            malloc(sizeof(struct list_node_t));
-//    new_node->val = i;
-//    new_node->next = ilist->head;
-//    ilist->head = new_node;
-//}
-//
-//void list_remove_val( list_t * ilist, int i )
-//{
-//    struct list_node_t * prev_node, *cur_node;
-//
-//    prev_node = NULL;
-//    cur_node = ilist->head;
-//    while( cur_node != NULL ) {
-//        if( cur_node->val == i ) {
-//            if( prev_node == NULL ) {
-//                ilist->head = cur_node->next;
-//            }
-//            else{
-//                prev_node->next = cur_node->next;
-//            }
-//            free( cur_node );
-//            return;
-//        }
-//        prev_node = cur_node;
-//        cur_node = cur_node->next;
-//    }
-//}
 //*********************************************************************************

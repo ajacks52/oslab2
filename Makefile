@@ -4,10 +4,6 @@ RM=/bin/rm -f
 
 INCLUDE = -Iaux_files/
 
-
-huffencode: huffman.h huffman.c huffencode.c tree_pqueue.h tree_pqueue.c
-	gcc -o huffencode huffman.c huffencode.c tree_pqueue.c
-
 simsh1: simsh1.c
 	$(CC) -o simsh1 $(CFLAGS)  simsh1.c
 

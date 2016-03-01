@@ -1,0 +1,23 @@
+What is a shell built in command?
+A shell built in command is a native shell command that performs some sort of utility. They are implemented within the shell itself much like our "exit" command we built for our shell.
+
+What are environment variables? Give five examples along with their uses.
+Enironment variables are charater strings that hold their state within the computers operation.  They can be set and accessed by the shell, running programs, and the user.  Their function is to give state to the computer and the execution environemnt. 
+5 Examples of Evironment Variables are 
+1 HOME which contains the path to your home directory.
+shell> cd $HOME
+
+2 USER which contains your login name.
+echo $USER
+
+3 PATH contains the directories that will be search before trying to run a program.
+export PATH=$PATH:/your/new/path/here 
+
+4 TEMP contains the path to the temp directoy.
+cd $TEMP
+
+5 PWD contains the path to the current working directory.
+echo $PWD
+
+What difference (if any) does it make if open() and dup2() are called before verse after the child process is forked?
+If open() and pud2() are called before forking off a child process you will overright the parent processes STDOUT_FILENO or STDIN_FILENO depending on which one you dup2(). Whereas if you first fork then call dup2() from inside the child process you will only change the child processes I/O. 
