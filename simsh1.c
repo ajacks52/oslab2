@@ -46,6 +46,7 @@ int MAX_ARGS = 32;
 int valid(chopped_line_t *args);
 program_with_args_t** construct_programs(chopped_line_t *parsed_line);
 bool check_exit( char * line );
+void handle_sigchld(int sig);
 
 
 int main (int argc, char **argv)

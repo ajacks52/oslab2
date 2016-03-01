@@ -34,6 +34,7 @@ int MAX_ARGS = 32;
 int valid(chopped_line_t *args);
 program_with_args_t** construct_programs(chopped_line_t *parsed_line);
 bool check_exit( char * line );
+void handle_sigchld(int sig);
 
 
 int main (int argc, char **argv)
@@ -68,7 +69,7 @@ int main (int argc, char **argv)
 
         if (bytes_read == -1 || check_exit(input_buffer))
         {
-            printf("exiting \n");
+            printf("exiting...\n");
             exit(1);
         }
 
@@ -96,16 +97,16 @@ int main (int argc, char **argv)
             continue;
         }
 
-        if (pid != 0)
-        { // parent process
-            printf ( "Parent process\n" );
-            int status;
-            if (valid_input != 2)
-            { // user didn't type & must wait on child process
-                waitpid(pid, &status, 0);
-            }
-        }
-        else
+//        if (pid != 0)
+//        { // parent process
+////            printf ( "Parent process\n" );
+//            int status;
+//            if (valid_input != 2)
+//            { // user didn't type & must wait on child process
+//                waitpid(pid, &status, 0);
+//            }
+//        }
+//        else
         {// child process
             int infile, outfile;
 
