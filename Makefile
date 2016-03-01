@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g -std=c99
+CFLAGS=-g -std=gnu99
 RM=/bin/rm -f
 
 INCLUDE = -Iaux_files/

@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include <sys/fcntl.h>
 #include <signal.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include <sys/stat.h>
 
 //*************************************************************************************
