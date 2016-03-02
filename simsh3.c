@@ -95,7 +95,7 @@ int run_command(program_with_args_t *programs) {
     int pipefd[2];
 
     if (programs->read_pipe == 1 || programs->open_pipe == 1) {
-        pipe(pipefd); 
+        pipe(pipefd);
     }
     // input is valid now create child process to run program
     // fork to create child process
@@ -205,7 +205,7 @@ program_with_args_t **construct_programs(chopped_line_t *parsed_line) {
     programs = (program_with_args_t **) malloc(num_processes_needed * sizeof(chopped_line_t));
     for (i = 0; i < num_processes_needed; i++) {
         programs[i] = (program_with_args_t *) calloc(1, sizeof(chopped_line_t));
-        programs[i]->args = (char **) malloc(MAX_ARGS * MAX_ARGS * sizeof(char *));
+        programs[i]->args = (char **) malloc((MAX_ARGS+2)  * sizeof(char *));
         programs[i]->infile = NULL;
         programs[i]->outfile = NULL;
         programs[i]->num_args = 0;
