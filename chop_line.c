@@ -11,7 +11,7 @@ chopped_line_t * get_chopped_line( const char * iline )
     const char * delim = " \t\n";
     char * cur_token;
 
-    cl = (chopped_line_t *) malloc ( sizeof(chopped_line_t) );
+    cl = (chopped_line_t *) malloc ( sizeof(chopped_line_t) * 2);
     cl->tokens = NULL;
     cl->num_tokens = 0;
 
