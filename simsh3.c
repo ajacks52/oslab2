@@ -202,11 +202,11 @@ program_with_args_t **construct_programs(chopped_line_t *parsed_line) {
             num_processes_needed++;
         }
     }
-    programs = (program_with_args_t **) malloc(num_processes_needed * sizeof(chopped_line_t));
+    programs = (program_with_args_t **) malloc(num_processes_needed * (sizeof( chopped_line_t)*2));
     for (i = 0; i < num_processes_needed; i++) {
         programs[i] = (program_with_args_t *) calloc(1, sizeof(chopped_line_t));
-//        programs[i]->args = (char **) malloc((MAX_ARGS+2)  * sizeof(char *));
-        programs[i]->args = NULL;
+        programs[i]->args = (char **) malloc((MAX_ARGS+2)  * sizeof(char *));
+//        programs[i]->args = NULL;
         programs[i]->infile = NULL;
         programs[i]->outfile = NULL;
         programs[i]->num_args = 0;
@@ -257,11 +257,7 @@ program_with_args_t **construct_programs(chopped_line_t *parsed_line) {
         }
         else if (!have_name) { // haven't found index's name
 
-            programs[process_index]->args = ( char ** ) realloc( programs[process_index]->args, 2 * sizeof( char * ) );
-//            strcpy(programs[process_index]->args[0], current_token);
-//            programs[process_index]->args[0+1] = NULL;
             programs[process_index]->args[0] = strdup(current_token);
-            programs[process_index]->args[0+1] = malloc(sizeof(char *) + 1);
             programs[process_index]->args[0+1] = NULL;
             programs[process_index]->num_args = 1;
 
@@ -270,11 +266,7 @@ program_with_args_t **construct_programs(chopped_line_t *parsed_line) {
         }
         else { // have found index's name
             args_array_index = programs[process_index]->num_args;
-            programs[process_index]->args = ( char ** ) realloc( programs[process_index]->args, (args_array_index+2) * sizeof( char * ) );
-//            strcpy(programs[process_index]->args[args_array_index], current_token);
-//            programs[process_index]->args[args_array_index+1] = NULL;
             programs[process_index]->args[args_array_index] = strdup(current_token);
-            programs[process_index]->args[args_array_index+1] = malloc(sizeof(char *) + 1);
             programs[process_index]->args[args_array_index+1] = NULL;
             programs[process_index]->num_args = args_array_index + 1;
         }
