@@ -94,6 +94,8 @@ int run_command(program_with_args_t *programs) {
     int pid;
     int pipefd[2];
 
+    pipe(pipefd);
+
     // input is valid now create child process to run program
     // fork to create child process
     pid = fork();
@@ -158,8 +160,6 @@ int run_command(program_with_args_t *programs) {
 
         if (programs->open_pipe == 1)
         {
-            pipe(pipefd);
-
             // replace stdout with write part of pipe
             dup2(pipefd[1], STDOUT_FILENO);
             close(pipefd[0]);
