@@ -94,8 +94,9 @@ int run_command(program_with_args_t *programs) {
     int pid;
     int pipefd[2];
 
-    pipe(pipefd);
-
+    if (programs->read_pipe == 1 || programs->open_pipe == 1) {
+        pipe(pipefd); 
+    }
     // input is valid now create child process to run program
     // fork to create child process
     pid = fork();
